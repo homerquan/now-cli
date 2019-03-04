@@ -29,6 +29,7 @@ const help = () => {
     -h, --help        Output usage information
     -d, --debug       Debug mode [off]
     -p, --port        Port [3000]
+    -c, --cloud       Dev on cloud
 
   ${chalk.dim('Examples:')}
 
@@ -46,7 +47,9 @@ export default async function main(ctx: NowContext) {
   try {
     argv = getArgs(ctx.argv.slice(2), {
       '--port': Number,
-      '-p': Number
+      '-p': Number,
+      '--cloud': Boolean,
+      '-c': Boolean
     });
     args = getSubcommand(argv._.slice(1), COMMAND_CONFIG).args;
     output = createOutput({ debug: argv['--debug'] });
