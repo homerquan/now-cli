@@ -1,6 +1,8 @@
 import http from 'http';
 import { Lambda } from '@zeit/fun';
 import { LambdaRuntime } from '@now/build-utils';
+import { Output } from '../../../util/output';
+import { NowContext } from '../../../types';
 import FileBlob from '@now/build-utils/file-blob';
 import FileFsRef from '@now/build-utils/file-fs-ref';
 
@@ -16,6 +18,12 @@ export interface DevServerOptions {
 
 export interface EnvConfig {
   [name: string]: string;
+}
+
+export interface DevWatcherOptions {
+  ctx: NowContext;
+  debug: boolean;
+  output: Output;
 }
 
 export interface BuildConfig {
