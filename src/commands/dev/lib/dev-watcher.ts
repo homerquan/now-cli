@@ -1,17 +1,15 @@
 import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
-import execa from 'execa';
 import chokidar from 'chokidar';
 import throttle from 'lodash.throttle';
+import WebSocket from 'ws';
 
+import { initWebsocket } from './dev-ws';
 import getUser from '../../../util/get-user';
 import Client from '../../../util/client';
 
 import wait from '../../../util/output/wait';
-import error from '../../../util/output/error';
-import success from '../../../util/output/success';
-import { readLocalConfig } from '../../../util/config/files';
 
 import IGNORED from '../../../util/ignored';
 
@@ -23,19 +21,15 @@ export default class devWatcher {
   private cwd: string;
   private ctx: NowContext;
   private output: Output;
-  private watcher: any;
+  private watcher: chokidar.FSWatcher;
+  private websocket: WebSocket;
   private devURL: string = '';
 
   constructor (cwd: string, options: DevWatcherOptions) {
     this.cwd = cwd;
     this.ctx = options.ctx;
     this.output = options.output;
-  }
-
-  start = async () => {
-    await this.generateDevURL();
-
-    this.output.log(`Your dev url is ${chalk.bold(this.devURL)}`);
+    this.websocket = initWebsocket('http://localhost:3000/_now/ws');
 
     this.watcher = chokidar.watch(this.cwd, {
       ignored: createIgnoredList(this.cwd),
@@ -44,6 +38,11 @@ export default class devWatcher {
     this.watcher.on('all', this.onFsChange);
 
     process.on('SIGINT', this.onQuit);
+  }
+
+  start = async () => {
+    await this.generateDevURL();
+    this.output.log(`Your dev url is ${chalk.bold(this.devURL)}`);
 
     // first deployment
     await this.deploy();
@@ -56,6 +55,7 @@ export default class devWatcher {
 
   onQuit = () => {
     this.watcher.close();
+    this.websocket.close(1000);
     console.log('stop dev-worker');
   };
 
@@ -63,10 +63,8 @@ export default class devWatcher {
     // TODO: verify project before do deployment
     console.time('> deployed');
 
-    const stopSpinner = wait('Creating dev deployment');
-    const deployed = await execa.stdout('now', { cwd: this.cwd });
-    await execa.stdout('now', ['alias', deployed, this.devURL]);
-    stopSpinner();
+    // TODO: collect files, verify files, send de
+    this.websocket.send('NDC: Send files to dev-worker');
 
     console.timeEnd('> deployed');
   }, 3000);
@@ -99,7 +97,7 @@ function readAsText (cwd: string, filename: string) {
   const fsPath = path.join(cwd, filename);
   if (fs.existsSync(fsPath) && fs.statSync(fsPath).isFile()) {
     return fs.readFileSync(fsPath, 'utf8');
-  } else {
-    return ''
   }
+
+  return ''
 }
